@@ -97,7 +97,11 @@ class UserNs:
 
     def run(self, command, cwd=os.getcwd()):
         # move cwd to new mounts
-        os.chdir(cwd)
+        try:
+            os.chdir(cwd)
+        except FileNotFoundError:
+            print("The current working directory '{}' doesn't exist in the new namespace.\nResetting to '/'.".format(cwd), file=sys.stderr)
+            os.chdir("/")
 
         # drops all capabilities (if uid != 0)
         os.execvp(command[0], command)
