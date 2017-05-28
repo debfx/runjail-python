@@ -63,6 +63,12 @@ class Libc:
         if result != 0:
             raise self._errno_exception()
 
+    def umount(self, target):
+        result = self._lib.umount(self._to_c_string(target))
+
+        if result != 0:
+            raise self._errno_exception()
+
 
 class UserNs:
     def __init__(self):
@@ -120,6 +126,9 @@ class UserNs:
     def mount_tmp(self, path):
         self._libc.mount("tmpfs", path, "tmpfs", Libc.MS_REC | Libc.MS_NOSUID | Libc.MS_NOATIME, "mode=1777")
 
+    def umount(self, path):
+        self._libc.umount(path)
+
     def setup_user_mapping(self):
         """Map the uid/gid in the parent namespace to the same inside the new namespace."""
 
@@ -139,8 +148,26 @@ class UserNs:
 
 
 class Runjail:
+    TMP_MOUNT_BASE = "/run/runjail"
+
     def __init__(self):
         self._userns = UserNs()
+
+    def prepare_bind_mount(self, path):
+        tmp_path = self.TMP_MOUNT_BASE + path
+        os.makedirs(tmp_path, 0o700)
+        self._userns.mount_bind(path, tmp_path)
+
+    def bind_mount(self, path, readonly):
+        tmp_path = self.TMP_MOUNT_BASE + path
+        os.makedirs(path, 0o700, exist_ok=True)
+        self._userns.mount_bind(tmp_path, path, readonly)
+        self._userns.umount(tmp_path)
+
+    def rmdirs(self, path):
+        for root, dirs, files in os.walk(path, topdown=False):
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
 
     def run(self, command):
         uid = os.getuid()
@@ -149,8 +176,8 @@ class Runjail:
         self._userns.create()
 
         self._userns.mount_tmpfs_ro("/run")
-        os.makedirs("/run/runjail{}".format(directory), 0o700)
-        self._userns.mount_bind(directory, "/run/runjail{}".format(directory))
+
+        self.prepare_bind_mount(directory)
 
         self._userns.mount_proc()
 
@@ -164,10 +191,9 @@ class Runjail:
 
         self._userns.mount_tmpfs_ro("/home")
 
-        os.makedirs(directory, 0o700)
-        self._userns.mount_bind("/run/runjail{}".format(directory), directory)
+        self.bind_mount(directory, readonly=False)
 
-        self._userns.mount_inaccessible("/run/runjail")
+        self.rmdirs(self.TMP_MOUNT_BASE)
 
         self._userns.run(command)
 
