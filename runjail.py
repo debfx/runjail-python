@@ -107,8 +107,7 @@ class UserNs:
     def mount_proc(self):
         self._libc.mount("proc", "/proc", "proc", Libc.MS_NOSUID | Libc.MS_NODEV | Libc.MS_NOEXEC)
 
-    def mount_ro(self, path):
-        self.mount_bind(path, path)
+    def remount_ro(self, path):
         self._libc.mount(path, path, None, Libc.MS_REC | Libc.MS_BIND | Libc.MS_REMOUNT | Libc.MS_RDONLY)
 
     def mount_inaccessible(self, path):
@@ -248,6 +247,11 @@ class Runjail:
             elif mount.type is MountType.EMPTYRO:
                 os.makedirs(mount.path, 0o700, exist_ok=True)
                 self._userns.mount_tmpfs_ro(mount.path)
+
+        # we don't need to touch those anymore, so mount them actually read-only
+        for mount in mounts:
+            if mount.type is MountType.EMPTYRO:
+                self._userns.remount_ro(mount.path)
 
         self.rmdirs(self.TMP_MOUNT_BASE)
 
