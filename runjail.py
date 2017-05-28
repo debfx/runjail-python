@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import argparse
 import collections
 import ctypes
 import enum
@@ -261,18 +262,22 @@ class Runjail:
 def main():
     runjail = Runjail()
 
-    args = sys.argv[1:]
-    if not args:
-        args = [ runjail.get_user_shell() ]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ro", action="append", default=[], help="Mount file/directory from parent namespace read-only.")
+    parser.add_argument("--rw", action="append", default=[], help="Mount file/directory from parent namespace read-write.")
+    parser.add_argument("--hide", action="append", default=[], help="Make file/directory inaccessible.")
+    parser.add_argument("--empty", action="append", default=[], help="Mount tmpfs on the specified path.")
+    parser.add_argument("--empty-ro", action="append", default=[], dest="emptyro", help="Mount tmpfs on the specified path.")
+    parser.add_argument("command", nargs="*", default=[runjail.get_user_shell()])
+    args = parser.parse_args()
 
-    options = Options(ro=["/usr"],
-                      rw=[os.getcwd()],
-                      hide=["/root"],
-                      empty=["/tmp", "/var/tmp", "/run/" + str(runjail.get_user_id()), runjail.get_home_dir()],
-                      emptyro=["/home"])
+    options = Options(ro=["/usr"] + args.ro,
+                      rw=args.rw,
+                      hide=["/root"] + args.hide,
+                      empty=["/tmp", "/var/tmp", "/run/" + str(runjail.get_user_id()), runjail.get_home_dir()] + args.empty,
+                      emptyro=["/home"] + args.emptyro)
 
-
-    runjail.run(options, args)
+    runjail.run(options, args.command)
 
 
 if __name__ == "__main__":
