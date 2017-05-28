@@ -15,9 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import collections
 import ctypes
+import enum
 import errno
 import os
+import pwd
 import sys
 
 class Libc:
@@ -147,11 +150,25 @@ class UserNs:
             f.write("{} {} 1\n".format(self._uid, self._uid))
 
 
+Options = collections.namedtuple("Options", ["ro", "rw", "hide", "empty", "emptyro"])
+
+class MountType(enum.Enum):
+    RO = 1
+    RW = 2
+    HIDE = 3
+    EMPTY = 4
+    EMPTYRO = 5
+
+Mount = collections.namedtuple("Mount", ["path", "type"])
+
+
 class Runjail:
     TMP_MOUNT_BASE = "/run/runjail"
 
     def __init__(self):
         self._userns = UserNs()
+        self._uid = os.getuid()
+        self._pwd = pwd.getpwuid(self._uid)
 
     def prepare_bind_mount(self, path):
         tmp_path = self.TMP_MOUNT_BASE + path
@@ -169,29 +186,68 @@ class Runjail:
             for name in dirs:
                 os.rmdir(os.path.join(root, name))
 
-    def run(self, command):
-        uid = os.getuid()
-        directory = os.getcwd()
+    def preprocess_path(self, path):
+        return os.path.realpath(os.path.expanduser(path))
+
+    def get_home_dir(self):
+        try:
+            return os.environ["HOME"]
+        except KeyError:
+            return self._pwd.pw_dir
+
+    def get_user_shell(self):
+        return self._pwd.pw_shell
+
+    def get_user_id(self):
+        return self._uid
+
+    def run(self, options, command):
+        mounts = []
+
+        for path in options.ro:
+            mounts.append(Mount(self.preprocess_path(path), MountType.RO))
+
+        for path in options.rw:
+            mounts.append(Mount(self.preprocess_path(path), MountType.RW))
+
+        for path in options.hide:
+            mounts.append(Mount(self.preprocess_path(path), MountType.HIDE))
+
+        for path in options.empty:
+            mounts.append(Mount(self.preprocess_path(path), MountType.EMPTY))
+
+        for path in options.emptyro:
+            mounts.append(Mount(self.preprocess_path(path), MountType.EMPTYRO))
+
+        # make sure we handle parent paths before sub paths
+        mounts.sort(key=lambda mount: mount.path)
 
         self._userns.create()
 
+        # hard-coded as we need /run/runjail for temporary bind mounts
         self._userns.mount_tmpfs_ro("/run")
 
-        self.prepare_bind_mount(directory)
+        for mount in mounts:
+            if mount.type is MountType.RO or mount.type is MountType.RW:
+                self.prepare_bind_mount(mount.path)
 
         self._userns.mount_proc()
 
-        self._userns.mount_inaccessible("/root")
-
-        self._userns.mount_tmp("/tmp")
-        self._userns.mount_tmp("/var/tmp")
-
-        os.makedirs("/run/user/{}".format(uid), 0o700)
-        self._userns.mount_tmpfs_rw("/run/user/{}".format(uid))
-
-        self._userns.mount_tmpfs_ro("/home")
-
-        self.bind_mount(directory, readonly=False)
+        for mount in mounts:
+            if mount.type is MountType.RO:
+                os.makedirs(mount.path, 0o700, exist_ok=True)
+                self.bind_mount(mount.path, readonly=True)
+            elif mount.type is MountType.RW:
+                os.makedirs(mount.path, 0o700)
+                self.bind_mount(mount.path, readonly=False)
+            elif mount.type is MountType.HIDE:
+                self._userns.mount_inaccessible(mount.path)
+            elif mount.type is MountType.EMPTY:
+                os.makedirs(mount.path, 0o700, exist_ok=True)
+                self._userns.mount_tmpfs_rw(mount.path)
+            elif mount.type is MountType.EMPTYRO:
+                os.makedirs(mount.path, 0o700, exist_ok=True)
+                self._userns.mount_tmpfs_ro(mount.path)
 
         self.rmdirs(self.TMP_MOUNT_BASE)
 
@@ -199,12 +255,20 @@ class Runjail:
 
 
 def main():
+    runjail = Runjail()
+
     args = sys.argv[1:]
     if not args:
-        args = [ "bash" ]
+        args = [ runjail.get_user_shell() ]
 
-    runjail = Runjail()
-    runjail.run(args)
+    options = Options(ro=["/usr"],
+                      rw=[os.getcwd()],
+                      hide=["/root"],
+                      empty=["/tmp", "/var/tmp", "/run/" + str(runjail.get_user_id()), runjail.get_home_dir()],
+                      emptyro=["/home"])
+
+
+    runjail.run(options, args)
 
 
 if __name__ == "__main__":
