@@ -64,16 +64,13 @@ class Libc:
             raise self._errno_exception()
 
 
-class Runjail:
-    def __init__(self, directory):
+class UserNs:
+    def __init__(self):
         self._libc = Libc()
+        # remember origina uid, changes when transitioning to new user ns
         self._uid = os.getuid()
-        self._dir = os.path.realpath(directory)
 
-    def jail(self):
-        if not os.path.isdir(self._dir):
-            raise RuntimeError("Dir '{}' doesn't exist".format(path))
-
+    def create(self):
         self._libc.unshare(Libc.CLONE_NEWUSER | Libc.CLONE_NEWNS | Libc.CLONE_NEWPID | Libc.CLONE_NEWIPC)
 
         # fork is necessary in order to remount proc in the new PID namespace
@@ -88,30 +85,9 @@ class Runjail:
 
         self.mount_private_propagation("/")
 
-        self.mount_tmpfs_ro("/run")
-        os.makedirs("/run/runjail{}".format(self._dir), 0o700)
-        self.mount_bind(self._dir, "/run/runjail{}".format(self._dir))
-
-        self.mount_proc()
-
-        self.mount_inaccessible("/root")
-
-        self.mount_tmp("/tmp")
-        self.mount_tmp("/var/tmp")
-
-        os.makedirs("/run/user/{}".format(self._uid), 0o700)
-        self.mount_tmpfs_rw("/run/user/{}".format(self._uid))
-
-        self.mount_tmpfs_ro("/home")
-
-        os.makedirs(self._dir, 0o700)
-        self.mount_bind("/run/runjail{}".format(self._dir), self._dir)
-
-        self.mount_inaccessible("/run/runjail")
-
-    def run(self, command):
+    def run(self, command, cwd=os.getcwd()):
         # move cwd to new mounts
-        os.chdir(self._dir)
+        os.chdir(cwd)
 
         # drops all capabilities (if uid != 0)
         os.execvp(command[0], command)
@@ -162,13 +138,46 @@ class Runjail:
             f.write("{} {} 1\n".format(self._uid, self._uid))
 
 
+class Runjail:
+    def __init__(self):
+        self._userns = UserNs()
+
+    def run(self, command):
+        uid = os.getuid()
+        directory = os.getcwd()
+
+        self._userns.create()
+
+        self._userns.mount_tmpfs_ro("/run")
+        os.makedirs("/run/runjail{}".format(directory), 0o700)
+        self._userns.mount_bind(directory, "/run/runjail{}".format(directory))
+
+        self._userns.mount_proc()
+
+        self._userns.mount_inaccessible("/root")
+
+        self._userns.mount_tmp("/tmp")
+        self._userns.mount_tmp("/var/tmp")
+
+        os.makedirs("/run/user/{}".format(uid), 0o700)
+        self._userns.mount_tmpfs_rw("/run/user/{}".format(uid))
+
+        self._userns.mount_tmpfs_ro("/home")
+
+        os.makedirs(directory, 0o700)
+        self._userns.mount_bind("/run/runjail{}".format(directory), directory)
+
+        self._userns.mount_inaccessible("/run/runjail")
+
+        self._userns.run(command)
+
+
 def main():
     args = sys.argv[1:]
     if not args:
         args = [ "bash" ]
 
-    runjail = Runjail(os.getcwd())
-    runjail.jail()
+    runjail = Runjail()
     runjail.run(args)
 
 
