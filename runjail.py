@@ -154,7 +154,7 @@ class UserNs:
             f.write("{} {} 1\n".format(self._uid, self._uid))
 
 
-Options = collections.namedtuple("Options", ["ro", "rw", "hide", "empty", "emptyro"])
+Options = collections.namedtuple("Options", ["ro", "rw", "hide", "empty", "emptyro", "cwd"])
 
 class MountType(enum.Enum):
     RO = 1
@@ -226,6 +226,8 @@ class Runjail:
         # make sure we handle parent paths before sub paths
         mounts.sort(key=lambda mount: mount.path)
 
+        cwd = self.preprocess_path(options.cwd)
+
         self._userns.create()
 
         # hard-coded as we need /run/runjail for temporary bind mounts
@@ -260,7 +262,7 @@ class Runjail:
 
         self.rmdirs(self.TMP_MOUNT_BASE)
 
-        self._userns.run(command)
+        self._userns.run(command, cwd)
 
 
 def main():
@@ -272,6 +274,7 @@ def main():
     parser.add_argument("--hide", action="append", default=[], help="Make file/directory inaccessible.")
     parser.add_argument("--empty", action="append", default=[], help="Mount tmpfs on the specified path.")
     parser.add_argument("--empty-ro", action="append", default=[], dest="emptyro", help="Mount tmpfs on the specified path.")
+    parser.add_argument("--cwd", default=os.getcwd(), help="Set the current working directory.")
     parser.add_argument("command", nargs="*", default=[runjail.get_user_shell()])
     args = parser.parse_args()
 
@@ -279,7 +282,8 @@ def main():
                       rw=args.rw,
                       hide=["/root"] + args.hide,
                       empty=["/tmp", "/var/tmp", "/run/" + str(runjail.get_user_id()), runjail.get_home_dir()] + args.empty,
-                      emptyro=["/home"] + args.emptyro)
+                      emptyro=["/home"] + args.emptyro,
+                      cwd=args.cwd)
 
     runjail.run(options, args.command)
 
