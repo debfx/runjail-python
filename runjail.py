@@ -31,6 +31,8 @@ class Libc:
     CLONE_NEWUSER = 0x10000000
     CLONE_NEWUTS =  0x04000000
 
+    MNT_DETACH =    0x2
+
     MS_NOATIME =    0x00400
     MS_BIND =       0x01000
     MS_NODEV =      0x00004
@@ -67,8 +69,8 @@ class Libc:
         if result != 0:
             raise self._errno_exception()
 
-    def umount(self, target):
-        result = self._lib.umount(self._to_c_string(target))
+    def umount2(self, target, flags):
+        result = self._lib.umount2(self._to_c_string(target), flags)
 
         if result != 0:
             raise self._errno_exception()
@@ -127,8 +129,8 @@ class UserNs:
     def mount_tmpfs(self, path, mode):
         self._libc.mount("tmpfs", path, "tmpfs", Libc.MS_REC | Libc.MS_NOSUID | Libc.MS_NOATIME, "mode=" + mode)
 
-    def umount(self, path):
-        self._libc.umount(path)
+    def umount(self, path, flags=0):
+        self._libc.umount2(path, flags)
 
     def setup_user_mapping(self):
         """Map the uid/gid in the parent namespace to the same inside the new namespace."""
@@ -182,7 +184,7 @@ class Runjail:
         tmp_path = self._bind_mapping[path]
         os.makedirs(path, 0o700, exist_ok=True)
         self._userns.mount_bind(tmp_path, path)
-        self._userns.umount(tmp_path)
+        self._userns.umount(tmp_path, Libc.MNT_DETACH)
 
     def rmdirs(self, path):
         for root, dirs, files in os.walk(path, topdown=False):
