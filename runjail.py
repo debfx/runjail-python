@@ -178,10 +178,10 @@ class Runjail:
         os.makedirs(tmp_path, 0o700)
         self._userns.mount_bind(path, tmp_path)
 
-    def bind_mount(self, path, readonly):
+    def bind_mount(self, path):
         tmp_path = self._bind_mapping[path]
         os.makedirs(path, 0o700, exist_ok=True)
-        self._userns.mount_bind(tmp_path, path, readonly)
+        self._userns.mount_bind(tmp_path, path)
         self._userns.umount(tmp_path)
 
     def rmdirs(self, path):
@@ -244,7 +244,7 @@ class Runjail:
             if mount.type in (MountType.RO, MountType.RW):
                 os.makedirs(mount.path, 0o700, exist_ok=True)
                 # MountType.RO is remounted read-only later
-                self.bind_mount(mount.path, readonly=False)
+                self.bind_mount(mount.path)
             elif mount.type is MountType.HIDE:
                 self._userns.mount_inaccessible(mount.path)
             elif mount.type is MountType.EMPTY:
