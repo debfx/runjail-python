@@ -258,6 +258,7 @@ class Runjail:
                 self._userns.remount_ro(mount.path)
 
         self.rmdirs(self.TMP_MOUNT_BASE)
+        self._userns.remount_ro("/run")
 
         self._userns.run(command, cwd)
 
