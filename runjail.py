@@ -209,6 +209,9 @@ class Runjail:
     def get_user_id(self):
         return self._uid
 
+    def get_user_runtime_dir(self):
+        return "/run/" + str(self.get_user_id())
+
     def run(self, options, command):
         mounts = []
 
@@ -284,7 +287,7 @@ def main():
     defaults = { "ro": [],
                  "rw": [],
                  "hide": [],
-                 "empty": ["/tmp", "/var/tmp", "/run/" + str(runjail.get_user_id()), runjail.get_home_dir()],
+                 "empty": ["/tmp", "/var/tmp", runjail.get_user_runtime_dir(), runjail.get_home_dir()],
                  "emptyro": ["/home"] }
 
     for name in os.listdir("/"):
