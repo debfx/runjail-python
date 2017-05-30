@@ -280,11 +280,27 @@ def main():
     parser.add_argument("command", nargs="*", default=[runjail.get_user_shell()])
     args = parser.parse_args()
 
-    options = Options(ro=["/usr"] + args.ro,
-                      rw=args.rw,
-                      hide=["/root"] + args.hide,
-                      empty=["/tmp", "/var/tmp", "/run/" + str(runjail.get_user_id()), runjail.get_home_dir()] + args.empty,
-                      emptyro=["/home"] + args.emptyro,
+    defaults = { "ro": [],
+                 "rw": [],
+                 "hide": [],
+                 "empty": ["/tmp", "/var/tmp", "/run/" + str(runjail.get_user_id()), runjail.get_home_dir()],
+                 "emptyro": ["/home"] }
+
+    for name in os.listdir("/"):
+        path = "/" + name
+        if os.path.islink(path):
+            continue
+
+        if name in ("bin", "boot", "etc", "sbin", "usr", "var") or name.startswith("lib"):
+            defaults["ro"].append(path)
+        elif name not in ("dev", "home", "proc", "run", "sys", "tmp"):
+            defaults["hide"].append(path)
+
+    options = Options(ro=defaults["ro"] + args.ro,
+                      rw=defaults["rw"] + args.rw,
+                      hide=defaults["hide"] + args.hide,
+                      empty=defaults["empty"] + args.empty,
+                      emptyro=defaults["emptyro"] + args.emptyro,
                       cwd=args.cwd)
 
     runjail.run(options, args.command)
