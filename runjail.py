@@ -173,14 +173,19 @@ class Runjail:
         self._userns = UserNs()
         self._uid = os.getuid()
         self._pwd = pwd.getpwuid(self._uid)
+        self._bind_mapping = {}
+        self._bind_mapping_counter = 0
 
     def prepare_bind_mount(self, path):
-        tmp_path = self.TMP_MOUNT_BASE + path
+        tmp_path = "{}/{}".format(self.TMP_MOUNT_BASE, self._bind_mapping_counter)
+        self._bind_mapping[path] = tmp_path
+        self._bind_mapping_counter += 1
+
         os.makedirs(tmp_path, 0o700)
         self._userns.mount_bind(path, tmp_path)
 
     def bind_mount(self, path, readonly):
-        tmp_path = self.TMP_MOUNT_BASE + path
+        tmp_path = self._bind_mapping[path]
         os.makedirs(path, 0o700, exist_ok=True)
         self._userns.mount_bind(tmp_path, path, readonly)
         self._userns.umount(tmp_path)
