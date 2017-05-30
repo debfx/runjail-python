@@ -245,11 +245,9 @@ class Runjail:
         self._userns.mount_proc()
 
         for mount in mounts:
-            if mount.type is MountType.RO:
+            if mount.type in (MountType.RO, MountType.RW):
                 os.makedirs(mount.path, 0o700, exist_ok=True)
-                self.bind_mount(mount.path, readonly=True)
-            elif mount.type is MountType.RW:
-                os.makedirs(mount.path, 0o700)
+                # MountType.RO is remounted read-only later
                 self.bind_mount(mount.path, readonly=False)
             elif mount.type is MountType.HIDE:
                 self._userns.mount_inaccessible(mount.path)
@@ -262,7 +260,7 @@ class Runjail:
 
         # we don't need to touch those anymore, so mount them actually read-only
         for mount in mounts:
-            if mount.type is MountType.EMPTYRO:
+            if mount.type in (MountType.RO, MountType.EMPTYRO):
                 self._userns.remount_ro(mount.path)
 
         self.rmdirs(self.TMP_MOUNT_BASE)
