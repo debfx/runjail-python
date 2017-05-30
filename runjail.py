@@ -189,6 +189,8 @@ class Runjail:
             for name in dirs:
                 os.rmdir(os.path.join(root, name))
 
+        os.rmdir(path)
+
     def preprocess_path(self, path):
         return os.path.realpath(os.path.expanduser(path))
 
