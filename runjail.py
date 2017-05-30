@@ -119,6 +119,7 @@ class UserNs:
 
     def mount_inaccessible(self, path):
         self._libc.mount("tmpfs", path, "tmpfs", Libc.MS_REC, "mode=000")
+        self.remount_ro(path)
 
     def mount_bind(self, source, target, readonly=False):
         self._libc.mount(source, target, None, Libc.MS_REC | Libc.MS_BIND)
