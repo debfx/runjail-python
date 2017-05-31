@@ -290,14 +290,15 @@ def main():
                  "empty": ["/tmp", "/var/tmp", runjail.get_user_runtime_dir(), runjail.get_home_dir()],
                  "emptyro": ["/home"] }
 
-    for entry in os.scandir("/"):
-        if entry.is_symlink():
+    for name in os.listdir("/"):
+        path = "/" + name
+        if os.path.islink(path):
             continue
 
-        if entry.name in ("bin", "boot", "etc", "sbin", "usr", "var") or entry.name.startswith("lib"):
-            defaults["ro"].append(entry.path)
-        elif entry.name not in ("dev", "home", "proc", "run", "sys", "tmp"):
-            defaults["hide"].append(entry.path)
+        if name in ("bin", "boot", "etc", "sbin", "usr", "var") or name.startswith("lib"):
+            defaults["ro"].append(path)
+        elif name not in ("dev", "home", "proc", "run", "sys", "tmp"):
+            defaults["hide"].append(path)
 
     options = Options(ro=defaults["ro"] + args.ro,
                       rw=defaults["rw"] + args.rw,
