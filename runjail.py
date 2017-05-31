@@ -194,7 +194,7 @@ class Runjail:
         if os.path.isdir(path):
             os.mkdir(tmp_path, 0o700)
         else:
-            open(tmp_path, "w").close()
+            self.create_file(tmp_path, 0o600)
         self._userns.mount_bind(path, tmp_path)
 
     def bind_mount(self, path):
@@ -204,7 +204,7 @@ class Runjail:
         else:
             os.makedirs(os.path.dirname(path), 0o700, exist_ok=True)
             if not os.path.exists(path):
-                open(path, "w").close()
+                self.create_file(path, 0o600)
 
         self._userns.mount_bind(tmp_path, path)
         self._userns.umount(tmp_path, Libc.MNT_DETACH)
