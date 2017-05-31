@@ -183,12 +183,8 @@ class Runjail:
         os.mkdir(self.TMP_MOUNT_BASE, 0o700)
 
         os.mkdir(self.TMP_MOUNT_RO_BASE, 0o500)
-        self._userns.mount_tmpfs(self.TMP_MOUNT_RO_BASE, "500")
-
         os.mkdir(self.TMP_MOUNT_RO_DIR, 0o000)
         self.create_file(self.TMP_MOUNT_RO_FILE, 0o000)
-
-        self._userns.remount_ro(self.TMP_MOUNT_RO_BASE)
 
     def prepare_bind_mount(self, path):
         tmp_path = "{}/{}".format(self.TMP_MOUNT_BASE, self._bind_mapping_counter)
