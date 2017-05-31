@@ -178,21 +178,41 @@ class Runjail:
         self._bind_mapping[path] = tmp_path
         self._bind_mapping_counter += 1
 
-        os.makedirs(tmp_path, 0o700)
+        if os.path.isdir(path):
+            os.makedirs(tmp_path, 0o700)
+        else:
+            open(tmp_path, "w").close()
         self._userns.mount_bind(path, tmp_path)
 
     def bind_mount(self, path):
         tmp_path = self._bind_mapping[path]
-        os.makedirs(path, 0o700, exist_ok=True)
+        if os.path.isdir(tmp_path):
+            os.makedirs(path, 0o700, exist_ok=True)
+        else:
+            os.makedirs(os.path.dirname(path), 0o700, exist_ok=True)
+            if not os.path.exists(path):
+                open(path, "w").close()
+
         self._userns.mount_bind(tmp_path, path)
         self._userns.umount(tmp_path, Libc.MNT_DETACH)
 
-    def rmdirs(self, path):
-        for root, dirs, files in os.walk(path, topdown=False):
+    def cleanup_bind_mounts(self):
+        # Before we start deleting stuff, check that there is no mount left.
+        # Needs to be a separate loop as the deleting happens bottom up.
+        for root, dirs, files in os.walk(self.TMP_MOUNT_BASE):
+            for name in files + dirs:
+                path = os.path.join(root, name)
+                if os.path.ismount(path):
+                    raise RuntimeError(path + " is still mounted.")
+
+        for root, dirs, files in os.walk(self.TMP_MOUNT_BASE, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+
             for name in dirs:
                 os.rmdir(os.path.join(root, name))
 
-        os.rmdir(path)
+        os.rmdir(self.TMP_MOUNT_BASE)
 
     def preprocess_path(self, path):
         return os.path.realpath(os.path.expanduser(path))
@@ -248,7 +268,6 @@ class Runjail:
 
         for mount in mounts:
             if mount.type in (MountType.RO, MountType.RW):
-                os.makedirs(mount.path, 0o700, exist_ok=True)
                 # MountType.RO is remounted read-only later
                 self.bind_mount(mount.path)
             elif mount.type is MountType.HIDE:
@@ -265,7 +284,7 @@ class Runjail:
             if mount.type in (MountType.RO, MountType.EMPTYRO):
                 self._userns.remount_ro(mount.path)
 
-        self.rmdirs(self.TMP_MOUNT_BASE)
+        self.cleanup_bind_mounts()
         self._userns.remount_ro("/run")
 
         self._userns.run(command, cwd)
