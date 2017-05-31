@@ -1,0 +1,12 @@
+dist: trusty
+# Full VM image as the containers don't allow creating user namespaces.
+sudo: required
+language: python
+python:
+  - "3.4"
+  - "3.5"
+  - "3.6"
+script:
+  - ./test.py
+notifications:
+  email: false
