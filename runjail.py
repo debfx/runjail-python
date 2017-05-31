@@ -164,10 +164,10 @@ Mount = collections.namedtuple("Mount", ["path", "type"])
 
 
 class Runjail:
-    TMP_MOUNT_BASE = "/run/runjail"
+    TMP_MOUNT_BASE =      "/run/runjail"
     TMP_MOUNT_HIDE_BASE = "/run/runjail-hide"
-    TMP_MOUNT_HIDE_DIR = "/run/runjail-hide/dir"
-    TMP_MOUNT_HIDE_FILE = "/run/runjail-hide/file"
+    TMP_MOUNT_HIDE_DIR =  TMP_MOUNT_HIDE_BASE + "/dir"
+    TMP_MOUNT_HIDE_FILE = TMP_MOUNT_HIDE_BASE + "/file"
 
     def __init__(self):
         self._userns = UserNs()
