@@ -179,7 +179,7 @@ class Runjail:
         self._bind_mapping_counter += 1
 
         if os.path.isdir(path):
-            os.makedirs(tmp_path, 0o700)
+            os.mkdir(tmp_path, 0o700)
         else:
             open(tmp_path, "w").close()
         self._userns.mount_bind(path, tmp_path)
@@ -259,6 +259,7 @@ class Runjail:
 
         # hard-coded as we need /run/runjail for temporary bind mounts
         self._userns.mount_tmpfs("/run", "550")
+        os.mkdir(self.TMP_MOUNT_BASE, 0o700)
 
         for mount in mounts:
             if mount.type is MountType.RO or mount.type is MountType.RW:
