@@ -166,6 +166,7 @@ Mount = collections.namedtuple("Mount", ["path", "type"])
 class Runjail:
     TMP_MOUNT_BASE = "/run/runjail"
     TMP_MOUNT_RO_BASE = "/run/runjail-ro"
+    TMP_MOUNT_RO_DIR = "/run/runjail-ro/dir"
     TMP_MOUNT_RO_FILE = "/run/runjail-ro/file"
 
     def __init__(self):
@@ -178,9 +179,12 @@ class Runjail:
     def init_bind_mounts(self):
         os.mkdir(self.TMP_MOUNT_BASE, 0o700)
 
-        os.mkdir(self.TMP_MOUNT_RO_BASE, 0o700)
-        self._userns.mount_tmpfs(self.TMP_MOUNT_RO_BASE, "550")
+        os.mkdir(self.TMP_MOUNT_RO_BASE, 0o500)
+        self._userns.mount_tmpfs(self.TMP_MOUNT_RO_BASE, "500")
+
+        os.mkdir(self.TMP_MOUNT_RO_DIR, 0o000)
         open(self.TMP_MOUNT_RO_FILE, "w").close()
+
         self._userns.remount_ro(self.TMP_MOUNT_RO_BASE)
 
     def prepare_bind_mount(self, path):
@@ -283,7 +287,7 @@ class Runjail:
                 self.bind_mount(mount.path)
             elif mount.type is MountType.HIDE:
                 if os.path.isdir(mount.path):
-                    self._userns.mount_inaccessible(mount.path)
+                    self._userns.mount_bind(self.TMP_MOUNT_RO_DIR, mount.path, readonly=True)
                 else:
                     self._userns.mount_bind(self.TMP_MOUNT_RO_FILE, mount.path, readonly=True)
             elif mount.type is MountType.EMPTY:
