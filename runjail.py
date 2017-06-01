@@ -22,6 +22,7 @@ import enum
 import errno
 import os
 import pwd
+import re
 import sys
 
 class Libc:
@@ -75,6 +76,43 @@ class Libc:
         if result != 0:
             raise self._errno_exception()
 
+MountInfoEntry = collections.namedtuple("MountInfoEntry",
+                                        ["mount_id", "parent_id", "major_minor", "root",
+                                         "mount_point", "mount_options", "optional_fields",
+                                         "fs_type", "mount_source", "super_options"])
+
+class MountInfo:
+    def __init__(self):
+        self._mounts = []
+        self._mountpoints = {}
+
+        with open("/proc/self/mountinfo") as f:
+            for line in f:
+                fields = line.rstrip("\n").split(" ")
+                fields = [MountInfo._unescape_field(field) for field in fields]
+                index_dash = -1
+                for i in range(6, len(fields)):
+                    if fields[i] == "-":
+                        index_dash = i
+                if index_dash == -1:
+                    raise RuntimeError("Missing optional fields separator.")
+                entry = MountInfoEntry._make(fields[:6] + [fields[6:index_dash]] + fields[index_dash+1:])
+                self._mounts.append(entry)
+                self._mountpoints[entry.mount_point] = entry
+
+    def get_list(self):
+        return self._mounts
+
+    def get_mountpoint(self, path):
+        return self._mountpoints[path]
+
+    @staticmethod
+    def _octal_to_char(match):
+        return chr(int(match.group(1), 8))
+
+    @staticmethod
+    def _unescape_field(field):
+        return re.sub(r"\\(\d{1,3})", MountInfo._octal_to_char, field)
 
 class UserNs:
     def __init__(self):
