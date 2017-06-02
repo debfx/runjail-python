@@ -93,12 +93,12 @@ class Libc:
         if result != 0:
             raise self._errno_exception()
 
-MountInfoEntry = collections.namedtuple("MountInfoEntry",
-                                        ["mount_id", "parent_id", "major_minor", "root",
-                                         "mount_point", "mount_options", "optional_fields",
-                                         "fs_type", "mount_source", "super_options"])
+_MountInfoEntry = collections.namedtuple("MountInfoEntry",
+                                         ["mount_id", "parent_id", "major_minor", "root",
+                                          "mount_point", "mount_options", "optional_fields",
+                                          "fs_type", "mount_source", "super_options"])
 
-class MountInfo:
+class MountInfoEntry(_MountInfoEntry):
     OPTION_FLAG_MAP = { "ro":          Libc.MS_RDONLY,
                         "noexec":      Libc.MS_NOEXEC,
                         "nosuid":      Libc.MS_NOSUID,
@@ -114,6 +114,22 @@ class MountInfo:
                         "strictatime": Libc.MS_STRICTATIME,
                         "lazytime":    Libc.MS_LAZYTIME }
 
+    def __init__(self, *args):
+        _MountInfoEntry.__init__(self, args)
+
+    def get_mount_flags(self):
+        flags = 0
+
+        for option in self.mount_options.split(","):
+            try:
+                flags |= MountInfoEntry.OPTION_FLAG_MAP[option]
+            except KeyError:
+                # ignore unknown options
+                pass
+
+        return flags
+
+class MountInfo:
     def __init__(self):
         self._mounts = []
         self._mountpoints = {}
@@ -137,19 +153,6 @@ class MountInfo:
 
     def get_mountpoint(self, path):
         return self._mountpoints[path]
-
-    @staticmethod
-    def options_to_flags(options):
-        flags = 0
-
-        for option in options.split(","):
-            try:
-                flags |= MountInfo.OPTION_FLAG_MAP[option]
-            except KeyError:
-                # ignore unknown options
-                pass
-
-        return flags
 
     @staticmethod
     def _octal_to_char(match):
