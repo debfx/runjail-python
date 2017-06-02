@@ -418,7 +418,7 @@ def main():
         if os.path.islink(path):
             continue
 
-        if name in ("bin", "boot", "etc", "sbin", "usr", "var") or name.startswith("lib"):
+        if name in ("bin", "boot", "etc", "sbin", "selinux", "usr", "var") or name.startswith("lib"):
             defaults["ro"].append(path)
         elif name not in ("dev", "home", "proc", "run", "sys", "tmp"):
             defaults["hide"].append(path)
