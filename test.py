@@ -25,8 +25,52 @@ class RunjailTest(unittest.TestCase):
         self.assertEqual(self.run_helper(["--ro=tests/data/ro"], "ro_read"), "ROTESTDATA")
 
     def test_ro_write(self):
-        with self.assertRaises(subprocess.CalledProcessError):
+        with self.assertRaises(subprocess.CalledProcessError) as cm:
             self.run_helper(["--ro=tests/data/ro"], "ro_write")
+        self.assertEqual(cm.exception.returncode, 3)
+
+    def test_rw_write(self):
+        self.run_helper(["--rw=tests/data/rw"], "rw_write")
+        with open("tests/data/rw/write_test") as f:
+            data = f.read().strip("\r\n\t ")
+        self.assertEqual(data, "RWTESTDATA")
+
+    def test_hide_read(self):
+        with self.assertRaises(subprocess.CalledProcessError) as cm:
+            self.run_helper(["--hide=tests/data/hide"], "hide_read")
+        self.assertEqual(cm.exception.returncode, 3)
+
+    def test_hide_write(self):
+        with self.assertRaises(subprocess.CalledProcessError) as cm:
+            self.run_helper(["--hide=tests/data/hide"], "hide_write")
+        self.assertEqual(cm.exception.returncode, 3)
+
+    def test_empty_read(self):
+        with self.assertRaises(subprocess.CalledProcessError) as cm:
+            self.run_helper(["--empty=tests/data/empty"], "empty_read")
+        self.assertEqual(cm.exception.returncode, 3)
+
+    def test_empty_write(self):
+        self.run_helper(["--empty=tests/data/empty"], "empty_write")
+
+    def test_emptyro_read(self):
+        with self.assertRaises(subprocess.CalledProcessError) as cm:
+            self.run_helper(["--empty-ro=tests/data/emptyro"], "emptyro_read")
+        self.assertEqual(cm.exception.returncode, 3)
+
+    def test_emptyro_write(self):
+        with self.assertRaises(subprocess.CalledProcessError) as cm:
+            self.run_helper(["--empty-ro=tests/data/emptyro"], "emptyro_write")
+        self.assertEqual(cm.exception.returncode, 3)
+
+    @classmethod
+    def tearDownClass(cls):
+        RunjailTest.try_remove("tests/data/rw/write_test")
+
+    @classmethod
+    def try_remove(cls, path):
+        if os.path.exists(path):
+            os.remove(path)
 
     def run_helper(self, args, cmd):
         result = subprocess.check_output(["./runjail.py"] + args + ["--ro=tests", "--cwd=tests", "--", "./helper.py", cmd],
