@@ -34,15 +34,32 @@ class Libc:
 
     MNT_DETACH =    0x2
 
-    MS_NOATIME =    0x00400
-    MS_BIND =       0x01000
-    MS_NODEV =      0x00004
-    MS_NOEXEC =     0x00008
-    MS_NOSUID =     0x00002
-    MS_PRIVATE =    0x40000
-    MS_RDONLY =     0x00001
-    MS_REC =        0x04000
-    MS_REMOUNT =    0x00020
+    MS_RDONLY =      0x00000001
+    MS_NOSUID =      0x00000002
+    MS_NODEV =       0x00000004
+    MS_NOEXEC =      0x00000008
+    MS_SYNCHRONOUS = 0x00000010
+    MS_REMOUNT =     0x00000020
+    MS_MANDLOCK =    0x00000040
+    MS_DIRSYNC  =    0x00000080
+    MS_NOATIME =     0x00000400
+    MS_NODIRATIME =  0x00000800
+    MS_BIND =        0x00001000
+    MS_MOVE =        0x00002000
+    MS_REC =         0x00004000
+    MS_SILENT =      0x00008000
+    MS_POSIXACL =    0x00010000
+    MS_UNBINDABLE =  0x00020000
+    MS_PRIVATE =     0x00040000
+    MS_SLAVE =       0x00080000
+    MS_SHARED =      0x00100000
+    MS_RELATIME =    0x00200000
+    MS_KERNMOUNT =   0x00400000
+    MS_I_VERSION =   0x00800000
+    MS_STRICTATIME = 0x01000000
+    MS_LAZYTIME =    0x02000000
+    MS_ACTIVE =      0x40000000
+    MS_NOUSER =      0x80000000
 
     def __init__(self):
         self._lib = ctypes.CDLL("libc.so.6", use_errno=True)
@@ -82,6 +99,21 @@ MountInfoEntry = collections.namedtuple("MountInfoEntry",
                                          "fs_type", "mount_source", "super_options"])
 
 class MountInfo:
+    OPTION_FLAG_MAP = { "ro":          Libc.MS_RDONLY,
+                        "noexec":      Libc.MS_NOEXEC,
+                        "nosuid":      Libc.MS_NOSUID,
+                        "nodev":       Libc.MS_NODEV,
+                        "sync":        Libc.MS_SYNCHRONOUS,
+                        "dirsync":     Libc.MS_DIRSYNC,
+                        "silent":      Libc.MS_SILENT,
+                        "mand":        Libc.MS_MANDLOCK,
+                        "noatime":     Libc.MS_NOATIME,
+                        "iversion":    Libc.MS_I_VERSION,
+                        "nodiratime":  Libc.MS_NODIRATIME,
+                        "relatime":    Libc.MS_RELATIME,
+                        "strictatime": Libc.MS_STRICTATIME,
+                        "lazytime":    Libc.MS_LAZYTIME }
+
     def __init__(self):
         self._mounts = []
         self._mountpoints = {}
@@ -105,6 +137,19 @@ class MountInfo:
 
     def get_mountpoint(self, path):
         return self._mountpoints[path]
+
+    @staticmethod
+    def options_to_flags(options):
+        flags = 0
+
+        for option in options.split(","):
+            try:
+                flags |= MountInfo.OPTION_FLAG_MAP[option]
+            except KeyError:
+                # ignore unknown options
+                pass
+
+        return flags
 
     @staticmethod
     def _octal_to_char(match):
