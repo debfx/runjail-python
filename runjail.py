@@ -200,18 +200,15 @@ class UserNs:
     def mount_proc(self):
         self._libc.mount("proc", "/proc", "proc", Libc.MS_NOSUID | Libc.MS_NODEV | Libc.MS_NOEXEC)
 
-    def remount_ro(self, path):
-        self._libc.mount(path, path, None, Libc.MS_REC | Libc.MS_BIND | Libc.MS_REMOUNT | Libc.MS_RDONLY)
+    def remount_ro(self, path, existing_flags):
+        self._libc.mount(path, path, None, existing_flags | Libc.MS_REC | Libc.MS_BIND | Libc.MS_REMOUNT | Libc.MS_RDONLY)
 
     def mount_inaccessible(self, path):
         self._libc.mount("tmpfs", path, "tmpfs", Libc.MS_REC, "mode=000")
-        self.remount_ro(path)
+        self.remount_ro(path, existing_flags=0)
 
-    def mount_bind(self, source, target, readonly=False):
+    def mount_bind(self, source, target):
         self._libc.mount(source, target, None, Libc.MS_REC | Libc.MS_BIND)
-        if readonly:
-            # Linux doesn't support read-only bind mounts in a single mount() call
-            self._libc.mount(source, target, None, Libc.MS_REC | Libc.MS_BIND | Libc.MS_REMOUNT | Libc.MS_RDONLY)
 
     def mount_tmpfs(self, path, mode):
         self._libc.mount("tmpfs", path, "tmpfs", Libc.MS_REC | Libc.MS_NOSUID | Libc.MS_NOATIME, "mode=" + mode)
@@ -372,9 +369,11 @@ class Runjail:
                 self.bind_mount(mount.path)
             elif mount.type is MountType.HIDE:
                 if os.path.isdir(mount.path):
-                    self._userns.mount_bind(self.TMP_MOUNT_HIDE_DIR, mount.path, readonly=True)
+                    self._userns.mount_bind(self.TMP_MOUNT_HIDE_DIR, mount.path)
+                    self._userns.remount_ro(mount.path, 0)
                 else:
-                    self._userns.mount_bind(self.TMP_MOUNT_HIDE_FILE, mount.path, readonly=True)
+                    self._userns.mount_bind(self.TMP_MOUNT_HIDE_FILE, mount.path)
+                    self._userns.remount_ro(mount.path, 0)
             elif mount.type is MountType.EMPTY:
                 os.makedirs(mount.path, 0o700, exist_ok=True)
                 self._userns.mount_tmpfs(mount.path, "750")
@@ -382,13 +381,15 @@ class Runjail:
                 os.makedirs(mount.path, 0o700, exist_ok=True)
                 self._userns.mount_tmpfs(mount.path, "550")
 
+        mount_info = MountInfo()
+
         # we don't need to touch those anymore, so mount them actually read-only
         for mount in mounts:
             if mount.type in (MountType.RO, MountType.EMPTYRO):
-                self._userns.remount_ro(mount.path)
+                self._userns.remount_ro(mount.path, mount_info.get_mountpoint(mount.path).get_mount_flags())
 
         self.cleanup_bind_mounts()
-        self._userns.remount_ro("/run")
+        self._userns.remount_ro("/run", mount_info.get_mountpoint("/run").get_mount_flags())
 
         self._userns.run(command, cwd)
 
