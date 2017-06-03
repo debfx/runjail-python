@@ -139,6 +139,7 @@ class MountInfo:
                 fields = line.rstrip("\n").split(" ")
                 fields = [MountInfo._unescape_field(field) for field in fields]
                 index_dash = -1
+                # field 6 until separator field ("-") are optional fields
                 for i in range(6, len(fields)):
                     if fields[i] == "-":
                         index_dash = i
