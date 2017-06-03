@@ -73,7 +73,7 @@ class RunjailTest(unittest.TestCase):
             os.remove(path)
 
     def run_helper(self, args, cmd):
-        result = subprocess.check_output(["./runjail.py"] + args + ["--ro=tests", "--cwd=tests", "--", "./helper.py", cmd],
+        result = subprocess.check_output(["bin/runjail"] + args + ["--ro=tests", "--cwd=tests", "--", "./helper.py", cmd],
                                          universal_newlines=True)
         return result.strip("\r\n\t ")
 
