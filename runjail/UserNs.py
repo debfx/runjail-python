@@ -18,6 +18,7 @@ import sys
 
 from runjail.Libc import Libc
 
+
 class UserNs:
     def __init__(self):
         self._libc = Libc()
@@ -44,7 +45,9 @@ class UserNs:
         try:
             os.chdir(cwd)
         except FileNotFoundError:
-            print("The current working directory '{}' doesn't exist in the new namespace.\nResetting to '/'.".format(cwd), file=sys.stderr)
+            print("The current working directory '{}' doesn't exist in the new namespace.\n"
+                  "Resetting to '/'.".format(cwd),
+                  file=sys.stderr)
             os.chdir("/")
 
         # drops all capabilities (if uid != 0)
@@ -54,10 +57,16 @@ class UserNs:
         self._libc.mount("none", mountpoint, None, Libc.MS_REC | Libc.MS_PRIVATE)
 
     def mount_proc(self):
-        self._libc.mount("proc", "/proc", "proc", Libc.MS_NOSUID | Libc.MS_NODEV | Libc.MS_NOEXEC)
+        self._libc.mount("proc",
+                         "/proc",
+                         "proc",
+                         Libc.MS_NOSUID | Libc.MS_NODEV | Libc.MS_NOEXEC)
 
     def remount_ro(self, path, existing_flags):
-        self._libc.mount(path, path, None, existing_flags | Libc.MS_REC | Libc.MS_BIND | Libc.MS_REMOUNT | Libc.MS_RDONLY)
+        self._libc.mount(path,
+                         path,
+                         None,
+                         existing_flags | Libc.MS_REC | Libc.MS_BIND | Libc.MS_REMOUNT | Libc.MS_RDONLY)
 
     def mount_inaccessible(self, path):
         self._libc.mount("tmpfs", path, "tmpfs", Libc.MS_REC, "mode=000")
@@ -67,7 +76,11 @@ class UserNs:
         self._libc.mount(source, target, None, Libc.MS_REC | Libc.MS_BIND)
 
     def mount_tmpfs(self, path, mode):
-        self._libc.mount("tmpfs", path, "tmpfs", Libc.MS_REC | Libc.MS_NOSUID | Libc.MS_NOATIME, "mode=" + mode)
+        self._libc.mount("tmpfs",
+                         path,
+                         "tmpfs",
+                         Libc.MS_REC | Libc.MS_NOSUID | Libc.MS_NOATIME,
+                         "mode=" + mode)
 
     def umount(self, path, flags=0):
         self._libc.umount2(path, flags)

@@ -23,6 +23,7 @@ _MountInfoEntry = collections.namedtuple("MountInfoEntry",
                                           "mount_point", "mount_options", "optional_fields",
                                           "fs_type", "mount_source", "super_options"])
 
+
 class MountInfoEntry(_MountInfoEntry):
     OPTION_FLAG_MAP = { "ro":          Libc.MS_RDONLY,
                         "noexec":      Libc.MS_NOEXEC,
@@ -54,6 +55,7 @@ class MountInfoEntry(_MountInfoEntry):
 
         return flags
 
+
 class MountInfo:
     def __init__(self):
         self._mounts = []
@@ -70,7 +72,7 @@ class MountInfo:
                         index_dash = i
                 if index_dash == -1:
                     raise RuntimeError("Missing optional fields separator.")
-                entry = MountInfoEntry._make(fields[:6] + [fields[6:index_dash]] + fields[index_dash+1:])
+                entry = MountInfoEntry._make(fields[:6] + [fields[6:index_dash]] + fields[index_dash + 1:])
                 self._mounts.append(entry)
                 self._mountpoints[entry.mount_point] = entry
 

@@ -19,20 +19,28 @@ import sys
 
 from runjail.Runjail import Options, Runjail
 
+
 def error(message):
     print(message, file=sys.stderr)
     sys.exit(1)
+
 
 def main():
     runjail = Runjail()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ro", action="append", default=[], help="Mount file/directory from parent namespace read-only.")
-    parser.add_argument("--rw", action="append", default=[], help="Mount file/directory from parent namespace read-write.")
-    parser.add_argument("--hide", action="append", default=[], help="Make file/directory inaccessible.")
-    parser.add_argument("--empty", action="append", default=[], help="Mount tmpfs on the specified path.")
-    parser.add_argument("--empty-ro", action="append", default=[], dest="emptyro", help="Mount tmpfs on the specified path.")
-    parser.add_argument("--cwd", default=os.getcwd(), help="Set the current working directory.")
+    parser.add_argument("--ro", action="append", default=[],
+                        help="Mount file/directory from parent namespace read-only.")
+    parser.add_argument("--rw", action="append", default=[],
+                        help="Mount file/directory from parent namespace read-write.")
+    parser.add_argument("--hide", action="append", default=[],
+                        help="Make file/directory inaccessible.")
+    parser.add_argument("--empty", action="append", default=[],
+                        help="Mount tmpfs on the specified path.")
+    parser.add_argument("--empty-ro", action="append", default=[], dest="emptyro",
+                        help="Mount tmpfs on the specified path.")
+    parser.add_argument("--cwd", default=os.getcwd(),
+                        help="Set the current working directory.")
     parser.add_argument("command", nargs="*", default=[runjail.get_user_shell()])
     args = parser.parse_args()
 

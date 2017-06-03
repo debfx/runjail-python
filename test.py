@@ -20,6 +20,7 @@ import subprocess
 import sys
 import unittest
 
+
 class RunjailTest(unittest.TestCase):
     def test_ro_read(self):
         self.assertEqual(self.run_helper(["--ro=tests/data/ro"], "ro_read"), "ROTESTDATA")
@@ -73,9 +74,14 @@ class RunjailTest(unittest.TestCase):
             os.remove(path)
 
     def run_helper(self, args, cmd):
-        result = subprocess.check_output(["bin/runjail"] + args + ["--ro=tests", "--cwd=tests", "--", "./helper.py", cmd],
-                                         universal_newlines=True)
+        full_cmd =  ["bin/runjail"]
+        full_cmd += args
+        full_cmd += ["--ro=tests", "--cwd=tests", "--", "./helper.py", cmd]
+
+        result = subprocess.check_output(full_cmd, universal_newlines=True)
+
         return result.strip("\r\n\t ")
+
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(sys.argv[0]))

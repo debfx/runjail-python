@@ -17,32 +17,42 @@
 
 import sys
 
+
 def helper_ro_read():
     print(open("data/ro/rofile").read())
+
 
 def helper_ro_write():
     open("data/ro/write_test", "w")
 
+
 def helper_rw_write():
     open("data/rw/write_test", "w").write("RWTESTDATA")
+
 
 def helper_hide_read():
     open("data/hide/emptyfile", "r")
 
+
 def helper_hide_write():
     open("data/hide/write_test", "w")
+
 
 def helper_empty_read():
     open("data/empty/emptyfile", "r")
 
+
 def helper_empty_write():
     open("data/empty/write_test", "w")
- 
+
+
 def helper_emptyro_read():
     open("data/emptyro/emptyrofile", "r")
 
+
 def helper_emptyro_write():
     open("data/emptyro/write_test", "w")
+
 
 def main():
     cmd = sys.argv[1]

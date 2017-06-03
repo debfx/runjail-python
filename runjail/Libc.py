@@ -16,6 +16,7 @@
 import ctypes
 import sys
 
+
 class Libc:
     CLONE_NEWIPC =  0x08000000
     CLONE_NEWNS =   0x00020000
@@ -32,7 +33,7 @@ class Libc:
     MS_SYNCHRONOUS = 0x00000010
     MS_REMOUNT =     0x00000020
     MS_MANDLOCK =    0x00000040
-    MS_DIRSYNC  =    0x00000080
+    MS_DIRSYNC =     0x00000080
     MS_NOATIME =     0x00000400
     MS_NODIRATIME =  0x00000800
     MS_BIND =        0x00001000
@@ -68,7 +69,7 @@ class Libc:
         if self._lib.unshare(flags) != 0:
             raise self._errno_exception()
 
-    def mount(self, source, target, fstype, mountflags = 0, data = None):
+    def mount(self, source, target, fstype, mountflags=0, data=None):
         result = self._lib.mount(self._to_c_string(source),
                                  self._to_c_string(target),
                                  self._to_c_string(fstype),

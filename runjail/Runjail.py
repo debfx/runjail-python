@@ -24,12 +24,14 @@ from runjail.UserNs import UserNs
 
 Options = collections.namedtuple("Options", ["ro", "rw", "hide", "empty", "emptyro", "cwd"])
 
+
 class MountType(enum.Enum):
     RO = 1
     RW = 2
     HIDE = 3
     EMPTY = 4
     EMPTYRO = 5
+
 
 Mount = collections.namedtuple("Mount", ["path", "type"])
 
@@ -175,7 +177,8 @@ class Runjail:
         # we don't need to touch those anymore, so mount them actually read-only
         for mount in mounts:
             if mount.type in (MountType.RO, MountType.EMPTYRO):
-                self._userns.remount_ro(mount.path, mount_info.get_mountpoint(mount.path).get_mount_flags())
+                self._userns.remount_ro(mount.path,
+                                        mount_info.get_mountpoint(mount.path).get_mount_flags())
 
         self.cleanup_bind_mounts()
         self._userns.remount_ro("/run", mount_info.get_mountpoint("/run").get_mount_flags())
