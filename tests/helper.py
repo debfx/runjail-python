@@ -76,5 +76,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# kate: space-indent on; indent-width 4;
