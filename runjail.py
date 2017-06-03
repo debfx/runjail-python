@@ -311,7 +311,8 @@ class Runjail:
 
         os.rmdir(self.TMP_MOUNT_BASE)
 
-    def preprocess_path(self, path):
+    @staticmethod
+    def preprocess_path(path):
         return os.path.realpath(os.path.expanduser(path))
 
     def get_home_dir(self):
@@ -395,6 +396,10 @@ class Runjail:
         self._userns.run(command, cwd)
 
 
+def error(message):
+    print(message, file=sys.stderr)
+    sys.exit(1)
+
 def main():
     runjail = Runjail()
 
@@ -424,11 +429,48 @@ def main():
         elif name not in ("dev", "home", "proc", "run", "sys", "tmp"):
             defaults["hide"].append(path)
 
-    options = Options(ro=defaults["ro"] + args.ro,
-                      rw=defaults["rw"] + args.rw,
-                      hide=defaults["hide"] + args.hide,
-                      empty=defaults["empty"] + args.empty,
-                      emptyro=defaults["emptyro"] + args.emptyro,
+    user_mounts = { "ro": args.ro,
+                    "rw": args.rw,
+                    "hide": args.hide,
+                    "empty": args.empty,
+                    "emptyro": args.emptyro }
+    user_mounts_all = []
+
+    for category in ("ro", "rw", "hide", "empty", "emptyro"):
+        user_mounts[category] = [Runjail.preprocess_path(mount) for mount in user_mounts[category]]
+        user_mounts_all.extend(user_mounts[category])
+
+    for mount in user_mounts_all:
+        if not os.path.exists(mount):
+            error("Mountpoint \"{}\" doesn't exist.".format(mount))
+
+    user_mounts_set = set()
+    for mount in user_mounts_all:
+        if mount == "/run" or mount.startswith("/run/runjail"):
+            error("Mountpoint /run and /run/runjail* is reserved for internal usage.")
+
+        if mount in user_mounts_set:
+            error("\"{}\" specified multiple times.".format(mount))
+        user_mounts_set.add(mount)
+
+        # user arguments override defaults
+        for category in ("ro", "rw", "hide", "empty", "emptyro"):
+            try:
+                defaults[category].remove(mount)
+            except ValueError:
+                # is not in list, ignore
+                pass
+
+    for mount in user_mounts["ro"] + user_mounts["rw"] + user_mounts["empty"] + user_mounts["emptyro"]:
+        for hide_mount in user_mounts["hide"] + defaults["hide"]:
+            if mount.startswith(hide_mount + "/"):
+                error("Can't mount \"{}\" since it's beneath hidden mountpoint \"{}\".".format(mount, hide_mount))
+
+    options = Options(ro=defaults["ro"] + user_mounts["ro"],
+                      rw=defaults["rw"] + user_mounts["rw"],
+                      hide=defaults["hide"] + user_mounts["hide"],
+                      empty=defaults["empty"] + user_mounts["empty"],
+                      emptyro=defaults["emptyro"] + user_mounts["emptyro"],
                       cwd=args.cwd)
 
     runjail.run(options, args.command)
