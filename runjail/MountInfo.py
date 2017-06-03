@@ -16,7 +16,7 @@
 import collections
 import re
 
-from runjail.Libc import *
+from runjail.Libc import Libc
 
 _MountInfoEntry = collections.namedtuple("MountInfoEntry",
                                          ["mount_id", "parent_id", "major_minor", "root",

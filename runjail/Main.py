@@ -17,7 +17,7 @@ import argparse
 import os
 import sys
 
-from runjail.Runjail import *
+from runjail.Runjail import Options, Runjail
 
 def error(message):
     print(message, file=sys.stderr)

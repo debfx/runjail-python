@@ -18,9 +18,9 @@ import enum
 import os
 import pwd
 
-from runjail.Libc import *
-from runjail.MountInfo import *
-from runjail.UserNs import *
+from runjail.Libc import Libc
+from runjail.MountInfo import MountInfo
+from runjail.UserNs import UserNs
 
 Options = collections.namedtuple("Options", ["ro", "rw", "hide", "empty", "emptyro", "cwd"])
 

@@ -16,7 +16,7 @@
 import os
 import sys
 
-from runjail.Libc import *
+from runjail.Libc import Libc
 
 class UserNs:
     def __init__(self):
