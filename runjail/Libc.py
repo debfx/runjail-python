@@ -54,6 +54,8 @@ class Libc:
     MS_ACTIVE =      0x40000000
     MS_NOUSER =      0x80000000
 
+    PR_SET_NO_NEW_PRIVS = 38
+
     def __init__(self):
         self._lib = ctypes.CDLL("libc.so.6", use_errno=True)
 
@@ -85,3 +87,11 @@ class Libc:
 
         if result != 0:
             raise self._errno_exception()
+
+    def prctl(self, option, arg2, arg3, arg4, arg5):
+        result = self._lib.prctl(option, arg2, arg3, arg4, arg5)
+
+        if result == -1:
+            raise self._errno_exception()
+        else:
+            return result

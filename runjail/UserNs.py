@@ -101,3 +101,6 @@ class UserNs:
 
         with open("/proc/self/gid_map", "w") as f:
             f.write("{} {} 1\n".format(self._uid, self._uid))
+
+    def set_no_new_privs(self):
+        self._libc.prctl(Libc.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)

@@ -208,4 +208,5 @@ class Runjail:
         self.cleanup_bind_mounts()
         self._userns.remount_ro("/run", mount_info.get_mountpoint("/run").get_mount_flags())
 
+        self._userns.set_no_new_privs()
         self._userns.run(command, cwd)
