@@ -25,8 +25,12 @@ class UserNs:
         # remember origina uid, changes when transitioning to new user ns
         self._uid = os.getuid()
 
-    def create(self):
-        self._libc.unshare(Libc.CLONE_NEWUSER | Libc.CLONE_NEWNS | Libc.CLONE_NEWPID | Libc.CLONE_NEWIPC)
+    def create(self, new_net=False):
+        unshare_flags = Libc.CLONE_NEWUSER | Libc.CLONE_NEWNS | Libc.CLONE_NEWPID | Libc.CLONE_NEWIPC
+        if new_net:
+            unshare_flags |= Libc.CLONE_NEWNET
+
+        self._libc.unshare(unshare_flags)
 
         # fork is necessary in order to remount proc in the new PID namespace
         pid = os.fork()

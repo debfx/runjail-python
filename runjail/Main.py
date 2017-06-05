@@ -41,6 +41,8 @@ def main():
                         help="Mount tmpfs on the specified path.")
     parser.add_argument("--cwd", default=os.getcwd(),
                         help="Set the current working directory.")
+    parser.add_argument("--nonet", action="store_true",
+                        help="Disable network access.")
     parser.add_argument("command", nargs="*", default=[runjail.get_user_shell()])
     args = parser.parse_args()
 
@@ -102,6 +104,7 @@ def main():
                       hide=defaults["hide"] + user_mounts["hide"],
                       empty=defaults["empty"] + user_mounts["empty"],
                       emptyro=defaults["emptyro"] + user_mounts["emptyro"],
-                      cwd=args.cwd)
+                      cwd=args.cwd,
+                      nonet=args.nonet)
 
     runjail.run(options, args.command)

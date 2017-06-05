@@ -23,7 +23,7 @@ from runjail.Libc import Libc
 from runjail.MountInfo import MountInfo
 from runjail.UserNs import UserNs
 
-Options = collections.namedtuple("Options", ["ro", "rw", "hide", "empty", "emptyro", "cwd"])
+Options = collections.namedtuple("Options", ["ro", "rw", "hide", "empty", "emptyro", "cwd", "nonet"])
 
 
 class MountType(enum.Enum):
@@ -157,7 +157,7 @@ class Runjail:
 
         cwd = self.preprocess_path(options.cwd)
 
-        self._userns.create()
+        self._userns.create(new_net=options.nonet)
 
         # hard-coded as we need /run/runjail for temporary bind mounts
         self._userns.mount_tmpfs("/run", "550")
