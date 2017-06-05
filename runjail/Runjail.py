@@ -17,6 +17,7 @@ import collections
 import enum
 import os
 import pwd
+import re
 
 from runjail.Libc import Libc
 from runjail.MountInfo import MountInfo
@@ -48,6 +49,7 @@ class Runjail:
         self._pwd = pwd.getpwuid(self._uid)
         self._bind_mapping = {}
         self._bind_mapping_counter = 0
+        self._bind_submounts = {}
 
     def create_file(self, path, mode):
         os.close(os.open(path, os.O_WRONLY | os.O_CREAT, mode))
@@ -69,6 +71,19 @@ class Runjail:
         else:
             self.create_file(tmp_path, 0o600)
         self._userns.mount_bind(path, tmp_path)
+
+    def populate_bind_submounts(self):
+        for path in self._bind_mapping.values():
+            self._bind_submounts[path] = []
+
+        # Get a list of sub-mounts beneath the bind-mounted paths.
+        # We need to keep track of those so we can remount them read-only later.
+        for mount in MountInfo().get_list():
+            match = re.search(r"^(" + re.escape(self.TMP_MOUNT_BASE) + r"/\d+)(/.+)$", mount.mount_point)
+            if match:
+                tmp_path = match.group(1)
+                sub_mount = match.group(2)
+                self._bind_submounts[tmp_path].append(sub_mount)
 
     def bind_mount(self, path):
         tmp_path = self._bind_mapping[path]
@@ -153,6 +168,7 @@ class Runjail:
                 self.prepare_bind_mount(mount.path)
 
         self._userns.mount_proc()
+        self.populate_bind_submounts()
 
         for mount in mounts:
             if mount.type in (MountType.RO, MountType.RW):
@@ -177,8 +193,17 @@ class Runjail:
         # we don't need to touch those anymore, so mount them actually read-only
         for mount in mounts:
             if mount.type in (MountType.RO, MountType.EMPTYRO):
-                self._userns.remount_ro(mount.path,
-                                        mount_info.get_mountpoint(mount.path).get_mount_flags())
+                remount_ro_paths = [mount.path]
+
+                # remount sub-mounts read-only
+                if mount.type == MountType.RO:
+                    tmp_path = self._bind_mapping[mount.path]
+                    for submount_path in self._bind_submounts[tmp_path]:
+                        remount_ro_paths.append(mount.path + submount_path)
+
+                for mount_path in remount_ro_paths:
+                    self._userns.remount_ro(mount_path,
+                                            mount_info.get_mountpoint(mount_path).get_mount_flags())
 
         self.cleanup_bind_mounts()
         self._userns.remount_ro("/run", mount_info.get_mountpoint("/run").get_mount_flags())
