@@ -7,6 +7,8 @@ python:
   - "3.5"
   - "3.6"
 script:
+  - pip3 install .
+  - runjail true
   - ./test.py
 notifications:
   email: false
