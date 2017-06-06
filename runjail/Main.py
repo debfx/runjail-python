@@ -25,6 +25,30 @@ def error(message):
     sys.exit(1)
 
 
+def get_defaults(runjail):
+    defaults = { "ro": [],
+                 "rw": [],
+                 "hide": [],
+                 "empty": ["/tmp", "/var/tmp", runjail.get_user_runtime_dir(), runjail.get_home_dir()],
+                 "emptyro": ["/home"] }
+
+    for name in os.listdir("/"):
+        path = "/" + name
+        if os.path.islink(path):
+            continue
+
+        if name in ("bin", "boot", "etc", "sbin", "selinux", "usr", "var") or name.startswith("lib"):
+            defaults["ro"].append(path)
+        elif name not in ("dev", "home", "proc", "run", "sys", "tmp"):
+            defaults["hide"].append(path)
+
+    hide_if_exists = [ "/sys/fs/fuse" ]
+
+    defaults["hide"].extend([path for path in hide_if_exists if os.path.exists(path)])
+
+    return defaults
+
+
 def main():
     runjail = Runjail()
 
@@ -46,21 +70,7 @@ def main():
     parser.add_argument("command", nargs="*", default=[runjail.get_user_shell()])
     args = parser.parse_args()
 
-    defaults = { "ro": [],
-                 "rw": [],
-                 "hide": [],
-                 "empty": ["/tmp", "/var/tmp", runjail.get_user_runtime_dir(), runjail.get_home_dir()],
-                 "emptyro": ["/home"] }
-
-    for name in os.listdir("/"):
-        path = "/" + name
-        if os.path.islink(path):
-            continue
-
-        if name in ("bin", "boot", "etc", "sbin", "selinux", "usr", "var") or name.startswith("lib"):
-            defaults["ro"].append(path)
-        elif name not in ("dev", "home", "proc", "run", "sys", "tmp"):
-            defaults["hide"].append(path)
+    defaults = get_defaults(runjail)
 
     user_mounts = { "ro": args.ro,
                     "rw": args.rw,
