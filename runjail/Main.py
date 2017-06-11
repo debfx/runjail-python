@@ -43,8 +43,6 @@ def get_defaults(runjail):
                 defaults["symlink"][path] = os.readlink(path)
             else:
                 defaults["ro"].append(path)
-        elif name not in ("dev", "home", "proc", "run", "tmp"):
-            defaults["hide"].append(path)
 
     hide_if_exists = [ "/sys/fs/fuse" ]
 
