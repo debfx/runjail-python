@@ -37,9 +37,11 @@ def get_defaults(runjail):
         if os.path.islink(path):
             continue
 
-        if name in ("bin", "boot", "etc", "sbin", "selinux", "usr", "var") or name.startswith("lib"):
+        # ideally we'd mount a new sysfs but the kernel only allows this if we are admin of the network namespace
+
+        if name in ("bin", "boot", "etc", "sbin", "selinux", "sys", "usr", "var") or name.startswith("lib"):
             defaults["ro"].append(path)
-        elif name not in ("dev", "home", "proc", "run", "sys", "tmp"):
+        elif name not in ("dev", "home", "proc", "run", "tmp"):
             defaults["hide"].append(path)
 
     hide_if_exists = [ "/sys/fs/fuse" ]

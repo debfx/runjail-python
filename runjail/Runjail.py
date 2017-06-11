@@ -171,8 +171,6 @@ class Runjail:
                                         mount_info.get_mountpoint(mount_path).get_mount_flags())
 
         self._userns.remount_ro(self._mount_base, mount_info.get_mountpoint(self._mount_base).get_mount_flags())
-        # ideally we'd mount a new sysfs but the kernel only allows this if we are admin of the network namespace
-        self._userns.remount_ro("/sys", mount_info.get_mountpoint("/sys").get_mount_flags())
 
         self._userns.set_no_new_privs()
         self._userns.run(command, cwd)
