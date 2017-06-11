@@ -44,7 +44,6 @@ class Runjail:
         self._pwd = pwd.getpwuid(self._uid)
         self._bind_mapping = {}
         self._bind_mapping_counter = 0
-        self._bind_mounts_ro = []
         self._mount_base = tempfile.mkdtemp(prefix="runjail")
         self._mount_hide_base = self._mount_base + "/runjail-hide"
         self._mount_hide_dir = self._mount_hide_base + "/dir"
@@ -76,15 +75,11 @@ class Runjail:
             self._userns.mount_bind(path, abs_target_path)
             mount_info_after = MountInfo()
 
-            # remember mount point and submounts so we can remount those read-only later
+            # remount submounts read-only
             for mount in mount_info_after.get_list():
                 if not mount_info_before.has_mountpoint(mount.mount_point):
-                    self._bind_mounts_ro.append(mount.mount_point)
-
-    def remount_bind_ro(self, mount_info=MountInfo()):
-        for mount_point in self._bind_mounts_ro:
-            self._userns.remount_ro(mount_point,
-                                    mount_info.get_mountpoint(mount_point).get_mount_flags())
+                    self._userns.remount_ro(mount.mount_point,
+                                            mount_info_after.get_mountpoint(mount.mount_point).get_mount_flags())
 
     @staticmethod
     def preprocess_path(path):
@@ -158,15 +153,15 @@ class Runjail:
                 self._userns.mount_tmpfs(abs_mount_path, "750")
             elif mount.type is MountType.EMPTYRO:
                 os.makedirs(abs_mount_path, 0o700, exist_ok=True)
+                # is later remounted read-only
                 self._userns.mount_tmpfs(abs_mount_path, "550")
 
         mount_info = MountInfo()
 
-        self.remount_bind_ro(mount_info)
-
         for mount in mounts:
-            if mount.type == MountType.EMPTYRO:
-                mount_path = self._mount_base + mount.path
+            mount_path = self._mount_base + mount.path
+
+            if mount.type is MountType.EMPTYRO:
                 self._userns.remount_ro(mount_path,
                                         mount_info.get_mountpoint(mount_path).get_mount_flags())
 
