@@ -14,6 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import signal
 import sys
 
 from runjail.Libc import Libc
@@ -60,6 +61,11 @@ class UserNs:
                   "Resetting to '/'.".format(cwd),
                   file=sys.stderr)
             os.chdir("/")
+
+        # reset signal handlers
+        for sig_nr in range(1, signal.NSIG):
+            if signal.getsignal(sig_nr) == signal.SIG_IGN:
+                signal.signal(sig_nr, signal.SIG_DFL)
 
         # drops all capabilities (if uid != 0)
         os.execvp(command[0], command)
