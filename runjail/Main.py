@@ -30,17 +30,19 @@ def get_defaults(runjail):
                  "rw": ["/dev/null", "/dev/zero", "/dev/full", "/dev/random", "/dev/urandom", "/dev/tty", "/dev/pts", "/dev/ptmx"],
                  "hide": [],
                  "empty": ["/tmp", "/var/tmp", "/dev/shm", runjail.get_user_runtime_dir(), runjail.get_home_dir()],
-                 "emptyro": ["/home", "/dev", "/run"] }
+                 "emptyro": ["/home", "/dev", "/run"],
+                 "symlink": {} }
 
     for name in os.listdir("/"):
         path = "/" + name
-        if os.path.islink(path):
-            continue
 
         # ideally we'd mount a new sysfs but the kernel only allows this if we are admin of the network namespace
 
-        if name in ("bin", "boot", "etc", "sbin", "selinux", "sys", "usr", "var") or name.startswith("lib"):
-            defaults["ro"].append(path)
+        if name in ("bin", "boot", "etc", "sbin", "selinux", "sys", "usr", "var", "mnt") or name.startswith("lib"):
+            if os.path.islink(path):
+                defaults["symlink"][path] = os.readlink(path)
+            else:
+                defaults["ro"].append(path)
         elif name not in ("dev", "home", "proc", "run", "tmp"):
             defaults["hide"].append(path)
 
@@ -116,6 +118,7 @@ def main():
                       hide=defaults["hide"] + user_mounts["hide"],
                       empty=defaults["empty"] + user_mounts["empty"],
                       emptyro=defaults["emptyro"] + user_mounts["emptyro"],
+                      symlink=defaults["symlink"],
                       cwd=args.cwd,
                       nonet=args.nonet)
 

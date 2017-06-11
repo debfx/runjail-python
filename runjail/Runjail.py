@@ -24,7 +24,7 @@ from runjail.Libc import Libc
 from runjail.MountInfo import MountInfo
 from runjail.UserNs import UserNs
 
-Options = collections.namedtuple("Options", ["ro", "rw", "hide", "empty", "emptyro", "cwd", "nonet"])
+Options = collections.namedtuple("Options", ["ro", "rw", "hide", "empty", "emptyro", "symlink", "cwd", "nonet"])
 
 
 class MountType(enum.Enum):
@@ -130,6 +130,9 @@ class Runjail:
         self._userns.mount_proc(self._mount_base + "/proc")
 
         self.init_hide_mounts()
+
+        for path, target in options.symlink.items():
+            os.symlink(target, self._mount_base + path)
 
         for mount in mounts:
             abs_mount_path = self._mount_base + mount.path
