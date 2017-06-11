@@ -53,7 +53,7 @@ class Runjail:
     def create_file(self, path, mode):
         os.close(os.open(path, os.O_WRONLY | os.O_CREAT, mode))
 
-    def init_bind_mounts(self):
+    def init_hide_mounts(self):
         os.mkdir(self._mount_hide_base, 0o500)
         os.mkdir(self._mount_hide_dir, 0o000)
         self.create_file(self._mount_hide_file, 0o000)
@@ -124,12 +124,12 @@ class Runjail:
         cwd = self.preprocess_path(options.cwd)
 
         self._userns.create(new_net=options.nonet)
-
         self._userns.mount_tmpfs(self._mount_base, "550")
-        os.mkdir(self._mount_base + "/proc", 0o550)
-        self.init_bind_mounts()
 
+        os.mkdir(self._mount_base + "/proc", 0o550)
         self._userns.mount_proc(self._mount_base + "/proc")
+
+        self.init_hide_mounts()
 
         for mount in mounts:
             abs_mount_path = self._mount_base + mount.path
