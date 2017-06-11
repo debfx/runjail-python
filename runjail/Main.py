@@ -30,7 +30,7 @@ def get_defaults(runjail):
                  "rw": ["/dev/null", "/dev/zero", "/dev/full", "/dev/random", "/dev/urandom", "/dev/tty", "/dev/pts", "/dev/ptmx"],
                  "hide": [],
                  "empty": ["/tmp", "/var/tmp", "/dev/shm", runjail.get_user_runtime_dir(), runjail.get_home_dir()],
-                 "emptyro": ["/home", "/dev"] }
+                 "emptyro": ["/home", "/dev", "/run"] }
 
     for name in os.listdir("/"):
         path = "/" + name

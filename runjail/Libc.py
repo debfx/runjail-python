@@ -89,6 +89,12 @@ class Libc:
         if result != 0:
             raise self._errno_exception()
 
+    def chroot(self, path):
+        result = self._lib.chroot(self._to_c_string(path))
+
+        if result != 0:
+            raise self._errno_exception()
+
     def prctl(self, option, arg2, arg3, arg4, arg5):
         result = self._lib.prctl(option, arg2, arg3, arg4, arg5)
 

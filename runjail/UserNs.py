@@ -20,7 +20,8 @@ from runjail.Libc import Libc
 
 
 class UserNs:
-    def __init__(self):
+    def __init__(self, chroot_dir):
+        self._chroot_dir = chroot_dir
         self._libc = Libc()
         # remember origina uid, changes when transitioning to new user ns
         self._uid = os.getuid()
@@ -38,6 +39,10 @@ class UserNs:
             # parent process:
             # wait for child and exit with its exit code
             _, status = os.waitpid(pid, 0)
+
+            self.umount(self._chroot_dir, Libc.MNT_DETACH)
+            os.rmdir(self._chroot_dir)
+
             sys.exit(os.WEXITSTATUS(status))
 
         self.setup_user_mapping()
@@ -45,6 +50,8 @@ class UserNs:
         self.mount_private_propagation("/")
 
     def run(self, command, cwd=os.getcwd()):
+        self._libc.chroot(self._chroot_dir)
+
         # move cwd to new mounts
         try:
             os.chdir(cwd)
@@ -60,9 +67,9 @@ class UserNs:
     def mount_private_propagation(self, mountpoint):
         self._libc.mount("none", mountpoint, None, Libc.MS_REC | Libc.MS_PRIVATE)
 
-    def mount_proc(self):
+    def mount_proc(self, path):
         self._libc.mount("proc",
-                         "/proc",
+                         path,
                          "proc",
                          Libc.MS_NOSUID | Libc.MS_NODEV | Libc.MS_NOEXEC)
 
