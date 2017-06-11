@@ -64,6 +64,7 @@ class MountInfo:
         with open("/proc/self/mountinfo") as f:
             for line in f:
                 fields = line.rstrip("\n").split(" ")
+                # the kernel escapes some chars like " "
                 fields = [MountInfo._unescape_field(field) for field in fields]
                 index_dash = -1
                 # field 6 until separator field ("-") are optional fields
