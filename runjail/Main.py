@@ -89,8 +89,8 @@ def main():
 
     user_mounts_set = set()
     for mount in user_mounts_all:
-        if mount == "/run" or mount.startswith("/run/runjail"):
-            error("Mountpoint /run and /run/runjail* is reserved for internal usage.")
+        if mount.startswith("/runjail"):
+            error("Mountpoint /runjail* is reserved for internal usage.")
 
         if mount in user_mounts_set:
             error("\"{}\" specified multiple times.".format(mount))
