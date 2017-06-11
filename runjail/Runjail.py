@@ -44,9 +44,8 @@ class Runjail:
         self._pwd = pwd.getpwuid(self._uid)
         self._bind_mapping = {}
         self._bind_mapping_counter = 0
-        self._bind_submounts = {}
+        self._bind_mounts_ro = []
         self._mount_base = tempfile.mkdtemp(prefix="runjail")
-        self._mount_tmp = self._mount_base + "/runjail-tmp"
         self._mount_hide_base = self._mount_base + "/runjail-hide"
         self._mount_hide_dir = self._mount_hide_base + "/dir"
         self._mount_hide_file = self._mount_hide_base + "/file"
@@ -56,66 +55,36 @@ class Runjail:
         os.close(os.open(path, os.O_WRONLY | os.O_CREAT, mode))
 
     def init_bind_mounts(self):
-        os.mkdir(self._mount_tmp, 0o500)
         os.mkdir(self._mount_hide_base, 0o500)
         os.mkdir(self._mount_hide_dir, 0o000)
         self.create_file(self._mount_hide_file, 0o000)
 
-    def prepare_bind_mount(self, path):
-        tmp_path = "{}/{}".format(self._mount_tmp, self._bind_mapping_counter)
-        self._bind_mapping[path] = tmp_path
-        self._bind_mapping_counter += 1
-
-        if os.path.isdir(path):
-            os.mkdir(tmp_path, 0o700)
-        else:
-            self.create_file(tmp_path, 0o600)
-        self._userns.mount_bind(path, tmp_path)
-
-    def populate_bind_submounts(self):
-        for path in self._bind_mapping.values():
-            self._bind_submounts[path] = []
-
-        # Get a list of sub-mounts beneath the bind-mounted paths.
-        # We need to keep track of those so we can remount them read-only later.
-        for mount in MountInfo().get_list():
-            match = re.search(r"^(" + re.escape(self._mount_tmp) + r"/\d+)(/.+)$", mount.mount_point)
-            if match:
-                tmp_path = match.group(1)
-                sub_mount = match.group(2)
-                self._bind_submounts[tmp_path].append(sub_mount)
-
-    def bind_mount(self, path):
-        tmp_path = self._bind_mapping[path]
+    def bind_mount(self, path, read_only):
         abs_target_path = self._mount_base + path
 
-        if os.path.isdir(tmp_path):
+        if os.path.isdir(path):
             os.makedirs(abs_target_path, 0o700, exist_ok=True)
         else:
             os.makedirs(self._mount_base + os.path.dirname(path), 0o700, exist_ok=True)
             if not os.path.exists(abs_target_path):
                 self.create_file(abs_target_path, 0o600)
 
-        self._userns.mount_bind(tmp_path, abs_target_path)
-        self._userns.umount(tmp_path, Libc.MNT_DETACH)
+        if not read_only:
+            self._userns.mount_bind(path, abs_target_path)
+        else:
+            mount_info_before = MountInfo()
+            self._userns.mount_bind(path, abs_target_path)
+            mount_info_after = MountInfo()
 
-    def cleanup_bind_mounts(self):
-        # Before we start deleting stuff, check that there is no mount left.
-        # Needs to be a separate loop as the deleting happens bottom up.
-        for root, dirs, files in os.walk(self._mount_tmp):
-            for name in files + dirs:
-                path = os.path.join(root, name)
-                if os.path.ismount(path):
-                    raise RuntimeError(path + " is still mounted.")
+            # remember mount point and submounts so we can remount those read-only later
+            for mount in mount_info_after.get_list():
+                if not mount_info_before.has_mountpoint(mount.mount_point):
+                    self._bind_mounts_ro.append(mount.mount_point)
 
-        for root, dirs, files in os.walk(self._mount_tmp, topdown=False):
-            for name in files:
-                os.remove(os.path.join(root, name))
-
-            for name in dirs:
-                os.rmdir(os.path.join(root, name))
-
-        os.rmdir(self._mount_tmp)
+    def remount_bind_ro(self, mount_info=MountInfo()):
+        for mount_point in self._bind_mounts_ro:
+            self._userns.remount_ro(mount_point,
+                                    mount_info.get_mountpoint(mount_point).get_mount_flags())
 
     @staticmethod
     def preprocess_path(path):
@@ -165,19 +134,15 @@ class Runjail:
         os.mkdir(self._mount_base + "/proc", 0o550)
         self.init_bind_mounts()
 
-        for mount in mounts:
-            if mount.type is MountType.RO or mount.type is MountType.RW:
-                self.prepare_bind_mount(mount.path)
-
         self._userns.mount_proc(self._mount_base + "/proc")
-        self.populate_bind_submounts()
 
         for mount in mounts:
             abs_mount_path = self._mount_base + mount.path
 
-            if mount.type in (MountType.RO, MountType.RW):
-                # MountType.RO is remounted read-only later
-                self.bind_mount(mount.path)
+            if mount.type is MountType.RO:
+                self.bind_mount(mount.path, read_only=True)
+            elif mount.type is MountType.RW:
+                self.bind_mount(mount.path, read_only=False)
             elif mount.type is MountType.HIDE:
                 if os.path.isdir(abs_mount_path):
                     os.makedirs(abs_mount_path, 0o700, exist_ok=True)
@@ -197,23 +162,14 @@ class Runjail:
 
         mount_info = MountInfo()
 
-        # we don't need to touch those anymore, so mount them actually read-only
+        self.remount_bind_ro(mount_info)
+
         for mount in mounts:
-            if mount.type in (MountType.RO, MountType.EMPTYRO):
-                remount_ro_paths = [mount.path]
+            if mount.type == MountType.EMPTYRO:
+                mount_path = self._mount_base + mount.path
+                self._userns.remount_ro(mount_path,
+                                        mount_info.get_mountpoint(mount_path).get_mount_flags())
 
-                # remount sub-mounts read-only
-                if mount.type == MountType.RO:
-                    tmp_path = self._bind_mapping[mount.path]
-                    for submount_path in self._bind_submounts[tmp_path]:
-                        remount_ro_paths.append(mount.path + submount_path)
-
-                for mount_path in remount_ro_paths:
-                    mount_path = self._mount_base + mount_path
-                    self._userns.remount_ro(mount_path,
-                                            mount_info.get_mountpoint(mount_path).get_mount_flags())
-
-        self.cleanup_bind_mounts()
         self._userns.remount_ro(self._mount_base, mount_info.get_mountpoint(self._mount_base).get_mount_flags())
         # ideally we'd mount a new sysfs but the kernel only allows this if we are admin of the network namespace
         self._userns.remount_ro("/sys", mount_info.get_mountpoint("/sys").get_mount_flags())

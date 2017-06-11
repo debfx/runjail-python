@@ -82,6 +82,9 @@ class MountInfo:
     def get_mountpoint(self, path):
         return self._mountpoints[path]
 
+    def has_mountpoint(self, path):
+        return path in self._mountpoints
+
     @staticmethod
     def _octal_to_char(match):
         return chr(int(match.group(1), 8))
