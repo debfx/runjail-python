@@ -61,7 +61,7 @@ class UserNs:
     def __init__(self, chroot_dir):
         self._chroot_dir = chroot_dir
         self._libc = Libc()
-        # remember origina uid, changes when transitioning to new user ns
+        # remember original uid, changes when transitioning to new user ns
         self._uid = os.getuid()
 
     def safeTcSetPgrp(self, fd, pgrp):
