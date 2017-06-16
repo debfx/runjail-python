@@ -166,6 +166,9 @@ class UserNs:
         self.setup_user_mapping()
         self.mount_private_propagation("/")
 
+        if new_net:
+            self.set_iface_lo_up()
+
         # Wait for our parent to finish initialization.
         lock.Wait()
         del lock
@@ -274,3 +277,16 @@ class UserNs:
 
     def set_no_new_privs(self):
         self._libc.prctl(Libc.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)
+
+    def set_iface_lo_up(self):
+        try:
+            import pyroute2
+        except ImportError:
+            print("Couldn't bring up the loopback interface for network. "
+                  "Install the pyroute2 python library.", file=sys.stderr)
+            return
+
+        ipr = pyroute2.IPRoute()
+        dev = ipr.link_lookup(ifname="lo")[0]
+        # Linux automatically adds the IP addresses
+        ipr.link("set", index=dev, state="up")
