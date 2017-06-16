@@ -14,6 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import ctypes
+import ctypes.util
 import errno
 import sys
 
@@ -58,7 +59,7 @@ class Libc:
     PR_SET_NO_NEW_PRIVS = 38
 
     def __init__(self):
-        self._lib = ctypes.CDLL("libc.so.6", use_errno=True)
+        self._lib = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
 
     def _to_c_string(self, string):
         if string is None:
