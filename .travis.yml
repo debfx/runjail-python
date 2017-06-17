@@ -6,8 +6,10 @@ python:
   - "3.4"
   - "3.5"
   - "3.6"
-script:
+install:
+  - pip3 install -r requirements.txt
   - pip3 install .
+script:
   - runjail true
   - ./test.py
 notifications:
