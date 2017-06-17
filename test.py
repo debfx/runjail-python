@@ -84,7 +84,13 @@ class RunjailTest(unittest.TestCase):
     def run_helper(self, args, cmd):
         full_cmd =  ["bin/runjail"]
         full_cmd += args
-        for path in sys.path:
+        # allow read only access to python binary and modules
+        python_paths = sys.path.copy()
+        try:
+            python_paths += os.environ["PATH"].split(":")
+        except KeyError:
+            pass
+        for path in python_paths:
             if not path.startswith("/usr") and path not in ("", os.getcwd()) and os.path.exists(path):
                 full_cmd.append("--ro=" + path)
         full_cmd += ["--ro=tests", "--cwd=tests", "--", "./helper.py", cmd]
