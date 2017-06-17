@@ -85,7 +85,7 @@ class RunjailTest(unittest.TestCase):
         full_cmd =  ["bin/runjail"]
         full_cmd += args
         for path in sys.path:
-            if not path.startswith("/usr") and os.path.exists(path):
+            if not path.startswith("/usr") and path not in ("", os.getcwd()) and os.path.exists(path):
                 full_cmd.append("--ro=" + path)
         full_cmd += ["--ro=tests", "--cwd=tests", "--", "./helper.py", cmd]
 
