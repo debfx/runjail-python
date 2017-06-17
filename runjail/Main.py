@@ -83,6 +83,8 @@ def main():
 
     for category in ("ro", "rw", "hide", "empty", "emptyro"):
         user_mounts[category] = [Runjail.preprocess_path(mount) for mount in user_mounts[category]]
+        # remove duplicates
+        user_mounts[category] = list(set(user_mounts[category]))
         user_mounts_all.extend(user_mounts[category])
 
     for mount in user_mounts_all:
