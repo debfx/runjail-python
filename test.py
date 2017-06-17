@@ -95,6 +95,8 @@ class RunjailTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    os.chdir(os.path.dirname(sys.argv[0]))
+    dirname = os.path.dirname(__file__)
+    if dirname:
+        os.chdir(dirname)
 
     unittest.main()
