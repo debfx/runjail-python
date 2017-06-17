@@ -21,6 +21,7 @@ import sys
 import time
 
 from runjail.Libc import Libc
+from runjail.LibCap import Pcap
 
 
 class PipeLock:
@@ -173,6 +174,15 @@ class UserNs:
         lock.Wait()
         del lock
 
+    def run(self, command, cwd=os.getcwd()):
+        self._libc.chroot(self._chroot_dir)
+        os.chdir("/")
+
+        # Drop all effective, inheritable and permitted capabilities
+        pcap = Pcap()
+        pcap.clear()
+        pcap.set_proc()
+
         # Resetup the locks for the next phase.
         lock = PipeLock()
 
@@ -206,9 +216,6 @@ class UserNs:
         # independent of the init process.
         os.setpgrp()
 
-    def run(self, command, cwd=os.getcwd()):
-        self._libc.chroot(self._chroot_dir)
-
         # move cwd to new mounts
         try:
             os.chdir(cwd)
@@ -223,7 +230,6 @@ class UserNs:
             if signal.getsignal(sig_nr) == signal.SIG_IGN:
                 signal.signal(sig_nr, signal.SIG_DFL)
 
-        # drops all capabilities (if uid != 0)
         os.execvp(command[0], command)
 
     def mount_private_propagation(self, mountpoint):
