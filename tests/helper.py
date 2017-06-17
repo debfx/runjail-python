@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import pyroute2
 import sys
 
 
@@ -54,6 +55,15 @@ def helper_emptyro_write():
     open("data/emptyro/write_test", "w")
 
 
+def helper_nonet():
+    addresses = []
+    ipr = pyroute2.IPRoute()
+    for iface_addr in ipr.get_addr():
+        ips_attr = filter(lambda attr: attr[0] == "IFA_ADDRESS", iface_addr["attrs"])
+        for ip_attr in ips_attr:
+            addresses.append(ip_attr[1])
+    print("\n".join(addresses))
+
 def main():
     cmd = sys.argv[1]
 
@@ -76,6 +86,8 @@ def main():
             helper_emptyro_read()
         elif cmd == "emptyro_write":
             helper_emptyro_write()
+        elif cmd == "nonet":
+            helper_nonet()
         else:
             sys.exit(1)
     except (OSError, FileNotFoundError) as e:

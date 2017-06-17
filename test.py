@@ -64,6 +64,14 @@ class RunjailTest(unittest.TestCase):
             self.run_helper(["--empty-ro=tests/data/emptyro"], "emptyro_write")
         self.assertEqual(cm.exception.returncode, 3)
 
+    def test_nonet(self):
+        ips = self.run_helper(["--nonet"], "nonet").split("\n")
+        # check that the new net namespace has at least one interface and IP
+        self.assertGreaterEqual(len(ips), 1)
+        # check that only loopback IPs are configured
+        for ip in ips:
+            self.assertIn(ip, ("127.0.0.1", "::1"))
+
     @classmethod
     def tearDownClass(cls):
         RunjailTest.try_remove("tests/data/rw/write_test")
