@@ -89,7 +89,10 @@ class RunjailTest(unittest.TestCase):
                 full_cmd.append("--ro=" + path)
         full_cmd += ["--ro=tests", "--cwd=tests", "--", "./helper.py", cmd]
 
-        result = subprocess.check_output(full_cmd, universal_newlines=True)
+        env = os.environ.copy()
+        env["PYTHONPATH"] = ":".join(sys.path)
+
+        result = subprocess.check_output(full_cmd, universal_newlines=True, env=env)
 
         return result.strip("\r\n\t ")
 
