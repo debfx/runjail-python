@@ -90,6 +90,10 @@ class RunjailTest(unittest.TestCase):
             python_paths += os.environ["PATH"].split(":")
         except KeyError:
             pass
+        try:
+            python_paths += os.environ["RO_PATH"].split(":")
+        except KeyError:
+            pass
         for path in python_paths:
             if not path.startswith("/usr") and path not in ("", os.getcwd()) and os.path.exists(path):
                 full_cmd.append("--ro=" + path)

@@ -11,6 +11,6 @@ install:
   - pip3 install .
 script:
   - runjail true
-  - ./test.py
+  - RO_PATH=/opt ./test.py
 notifications:
   email: false
